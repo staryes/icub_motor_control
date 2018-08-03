@@ -156,8 +156,10 @@ public:
 
 
         Bottle signal;
-        signal.addInt(0);
+        signal.addInt(26);
         triggerPort.write(signal);
+
+        yInfo() << "the signal is " << signal.toString().c_str();
 
         if (rf.check("magic-number"))
         {

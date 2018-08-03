@@ -27,6 +27,11 @@ private:
     double angle, period;
     bool triggered;
 
+        Port inPort;
+        Port outPort;
+
+        Bottle trigger_said;
+
 public:
 
     // set the correct angle to send to the server and the period of the thread
@@ -40,6 +45,21 @@ public:
         // output port: /client/output
         // input port: /client/input
         // FILL IN THE CODE
+            if (!inPort.open("/client/input"))
+            {
+                    return false;
+            }
+            inPort.addOutput("/trigger/output");
+
+            if(!outPort.open("/client/output"))
+            {
+                    return false;
+            }
+            while (outPort.getOutputCount() == 0)
+            {
+                    yInfo()<<"Waiting the connection to the server...";
+                    yarp::os::Time::delay(0.3);
+            }
         return true;
     }
 
@@ -75,6 +95,9 @@ public:
     {
         // close ports
         // FILL IN THE CODE
+            yInfo() << "Calling close client";
+            outPort.close();
+            inPort.close();
         return true;
     }
 
@@ -83,17 +106,27 @@ public:
     {
         // interrupt ports
         // FILL IN THE CODE
+            yInfo() << "Interrupt happened";
         return true;
     }
 
     /****************************************************/
     bool updateModule()
     {
+            static double angle = 0.0;
         if (!triggered)
         {
             // read from the input port the signal from the
             // trigger for starting to send data to the server
             // FILL IN CODE
+                if(!inPort.read(trigger_said))
+                {
+                        yError() << "error while reading from trigger!";
+                        return 0;
+                }
+
+                angle = trigger_said.get(0).asDouble();
+                yInfo() << "angle " << angle;
             triggered = true;
         }
 
@@ -101,6 +134,15 @@ public:
         // angle and send it to the server through the
         // output port
         // FILL IN CODE
+
+        Bottle output;
+
+        output.addDouble(angle);
+        output.addDouble(26.0);
+        yInfo() << output.toString().c_str();
+
+        outPort.write(output);
+
         return true;
     }
 

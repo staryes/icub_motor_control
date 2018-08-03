@@ -22,7 +22,7 @@ private:
     // define one input port to receive the angle from the client
     // hint: think about which port you need, buffered? simple?
     // FILL IN THE CODE
-
+        Port sPort;
     PolyDriver                       driver;
     IControlMode2                   *imod;
     IEncoders                       *ienc;
@@ -36,7 +36,7 @@ private:
     //Implement the BufferedPort callback, as soon as new data is coming
     void moveArm(Bottle* bot)
     {
-        static bool invert = true;
+        static bool invert = false;
         if (!bot->get(0).isDouble())
         {
             yError()<<"Expecting a double on read...";
@@ -59,6 +59,9 @@ private:
             // check that "angle" is inside the joint
             // limits before moving, if so move the arm
             // FILL IN CODE
+            ilim->getLimits(2, &min, &max); // joint 2
+            if(angle < max && angle > min)
+                    ipos->positionMove(2, angle);
 
         }
     }
@@ -74,10 +77,17 @@ public:
 
         // open the input port /server/input
         // FILL IN THE CODE
+            if (!sPort.open("/server/input"))
+            {
+                    yError() << "cannot open the server input port";
+                    return -1;
+            }
+
+            sPort.addOutput("/client/output");
         return true;
     }
 
-    /****************************************************/
+    /***************************************************/
     bool configDevice()
     {
         // configure the options for the driver
@@ -109,9 +119,11 @@ public:
         // tell the device we aim to control
         // in position mode all the joints
         // FILL IN THE CODE
+        imod->setControlMode(2, VOCAB_CM_POSITION);
 
         // set ref speed for the joint 2 to 40.0 deg/s
         // FILL IN THE CODE
+        ipos->setRefSpeed(2, 40.0);
 
         return true;
     }
@@ -133,7 +145,7 @@ public:
     /****************************************************/
     double getPeriod()
     {
-        return 0.0;
+        return 2.0;
     }
 
     /****************************************************/
@@ -141,6 +153,7 @@ public:
     {
         // close the port and close the PolyDriver
         // FILL IN THE CODE
+            yInfo() << "calling close server";
         return true;
     }
 
@@ -150,6 +163,7 @@ public:
 
         // interrupt the port
         // FILL IN THE CODE
+            yInfo() << "Interrupt happened";
         return true;
     }
 
@@ -159,6 +173,16 @@ public:
         Bottle* bot = nullptr;
         // read from the input port passing "bot"
         // FILL IN THE CODE
+        Bottle cmd;
+        if(!sPort.read(cmd))
+        {
+                yError() << "error while receiving";
+                return 0;
+        }
+
+        bot = &cmd;
+        yInfo() << "the cmd is " << cmd.toString().c_str();
+
         if (bot)
         {
             // try to move the arm
